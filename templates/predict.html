@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recommendations</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">Recommendations for User {{ user_id }}</h1>
+        <p class="text-center">Based on your ratings, here are your personalized recommendations:</p>
+        <ul class="list-group">
+            {% for item in recommendations %}
+            <li class="list-group-item">{{ item }}</li>
+            {% endfor %}
+        </ul>
+        <a href="/" class="btn btn-secondary mt-4">Go Back</a>
+    </div>
+</body>
+</html>
