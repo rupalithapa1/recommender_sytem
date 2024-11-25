@@ -1,7 +1,6 @@
 class PredictionPipeline:
     def __init__(self):
         # Load any models or resources here
-        
         pass
 
     def predict(self, user_id, ratings):
