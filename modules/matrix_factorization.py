@@ -1,5 +1,7 @@
+import pickle
 import numpy as np
 from sklearn.decomposition import NMF, TruncatedSVD
+
 
 def apply_nmf(user_item_matrix, n_components=20):
     nmf_model = NMF(n_components=n_components, init='random', random_state=42)
@@ -14,3 +16,8 @@ def apply_svd(user_item_matrix, n_components=20):
     Vt = svd_model.components_
     reconstructed_matrix = np.dot(U, Vt)
     return U, Vt, reconstructed_matrix
+
+# Save the reconstructed matrix
+with open('saved_models/reconstructed_matrix.pkl', 'wb') as f:
+    pickle.dump(reconstructed_matrix, f)
+

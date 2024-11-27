@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, flash
-from deployment.pipeline.prediction_pipeline import PredictionPipeline  # Import your pipeline
+from deployment.pipeline.prediction_pipeline import PredictionPipeline  #Import your pipeline
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key"  # Needed for flashing messages

@@ -1,5 +1,7 @@
+import pickle
 import pandas as pd
 from sklearn.model_selection import train_test_split
+
 
 def prepare_data(user_item_matrix_path):
     # Load user-item matrix
@@ -13,3 +15,6 @@ def split_data(user_item_matrix, test_size=0.2, random_state=42):
     train = pd.DataFrame(train, index=user_item_matrix.index, columns=user_item_matrix.columns)
     test = pd.DataFrame(test, index=user_item_matrix.index, columns=user_item_matrix.columns)
     return train, test
+
+
+    
