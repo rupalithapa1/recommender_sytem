@@ -3,9 +3,6 @@ import numpy as np
 import pandas as pd
 import os
 import sys
-from skimage.feature import local_binary_pattern
-from skimage.filters import gabor
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from training.exception import FeatureExtractionError,handle_exception
 from training.custom_logging import info_logger, error_logger
 from training.entity.config_entity import FeatureExtractionConfig
