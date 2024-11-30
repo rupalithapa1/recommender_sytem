@@ -32,11 +32,6 @@ class DataIngestionError(PipelineError):
 
 class DataValidationError(PipelineError):
     pass
-class FeatureExtractionError(PipelineError):
-    pass
-
-class NestedCrossValError(PipelineError):
-    pass
 
 class FeatureEngineeringError(PipelineError):
     pass
