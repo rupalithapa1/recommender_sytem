@@ -1,0 +1,10 @@
+import pickle
+
+#Example: Reconstructed matrix from NMF
+reconstructed_matrix = [[1.2, 0.5], [0.3, 0.7]]  # Example matrix
+
+# Save the object to a pickle file
+with open('reconstructed_matrix.pkl', 'wb') as file:
+    pickle.dump(reconstructed_matrix, file)
+
+print("Matrix saved successfully!")

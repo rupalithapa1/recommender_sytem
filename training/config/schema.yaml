@@ -1,0 +1,44 @@
+Features_Information : 
+    UserID             :               object
+    ItemID             :              object
+    Rating             :              int64
+    PurchaseHistory    :             object
+    CartActivity       :            object
+    WishlistActivity   :           object
+    Clicks             :            int64
+    Views              :           int64
+    TimeSpentOnItem    :           float64
+    PurchaseDate       :       datetime64[ns]
+    SessionDuration    :         float64
+    DeviceType         :          object
+    AbandonedCartData  :          object
+    Age                :           int64
+    Gender             :         object
+    Location           :          object
+    Income             :          object
+    Occupation         :          object
+    SignUpDate         :        datetime64[ns]
+    MembershipLevel    :          object
+    BrowsingHistory    :          object
+    Device             :          object
+    TimeOfInteraction  :         object
+    SearchQueries      :          object
+    ProductName        :          object
+    Category           :          object
+    Price              :         float64
+    Discount           :        float64
+    Brand              :          object
+    Description        :          object
+    Tags               :          object
+    Color              :         object
+    Size               :          object
+    Stock              :          int64
+    Ratings            :         float64
+    Reviews            :          object
+    ReleaseDate        :  datetime64[ns]
+    PopularityScore    :        float64
+
+
+Target_Columns :
+    Column1               :             UserID   
+    Column2               :             ItemID  

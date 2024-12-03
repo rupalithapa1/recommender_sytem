@@ -1,0 +1,38 @@
+artifacts_root: artifacts
+
+data ingestion:
+  root dir: artifacts/data_ingestion
+  source: data/synthetic_recommendation_data (1).xlsx
+  data_dir: artifacts/data_ingestion
+  STATUS_FILE: artifacts/data_ingestion/status.txt
+
+data validation:
+  root_dir: artifacts/data_validation
+  data_dir: artifacts/data_ingestion/synthetic_recommendation_data (1).xlsx
+  STATUS_FILE: artifacts/data_validation/status.txt 
+ 
+ 
+feature_engineering:
+  root_dir: artifacts/feature_engineering
+  train_data_path: artifacts/feature_engineering/data_for_final_train
+  test_data_path: artifacts/feature_engineering/data_for_final_train
+  STATUS_FILE: artifacts/feature_engineering/status.txt
+
+
+model_trainer:
+  root_dir: artifacts/model_trainer
+  train_data_path: artifacts/feature_engineering
+  test_data_path: artifacts/feature_engineering
+  model_name: model.joblib
+  random_search_models_nmf: artifacts/model_trainer/random_search_models/nmf
+  model_cache_nmf: artifacts/model_trainer/model_cache_nmf
+  metric_file_name_nmf: artifacts/model_trainer/random_search_models/nmf/metrics
+  best_model_params_nmf: artifacts/model_trainer/random_search_models/nmf/best_model_params
+  STATUS_FILE: artifacts/model_trainer/status.txt
+
+model_evaluation:
+  root_dir: artifacts/model_evaluation
+  test_data_path: artifacts/feature_engineering
+  model_path: artifacts/model_trainer/model.joblib
+  metric_file: artifacts/model_evaluation/metrics
+  STATUS_FILE: artifacts/model_evaluation/status.txt
