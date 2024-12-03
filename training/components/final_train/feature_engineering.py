@@ -4,6 +4,9 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder,MinMaxScaler
 from datetime import datetime
+pip install textblob
+python -m textblob.download_corpora
+
 
 df = pd.read_excel('recomendation.xlsx')
 
@@ -114,9 +117,6 @@ df.drop(columns=['Tags','Description'],inplace=True)
 df.sample()
 
 df.shape
-
-pip install textblob
-
 
 from textblob import TextBlob
 
