@@ -1,99 +1,166 @@
 import os
 import sys
-import joblib
 import pandas as pd
 import numpy as np
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
+from sklearn.preprocessing import LabelEncoder,MinMaxScaler
+from datetime import datetime
 
-from training.exception import FeatureEngineeringError,handle_exception
-from training.custom_logging import info_logger, error_logger
-from training.entity.config_entity import FeatureEngineeringConfig
-from training.configuration_manager.configuration import ConfigurationManager
+df = pd.read_excel('recomendation.xlsx')
+
+df=df.drop(columns=['PurchaseHistory','CartActivity','WishlistActivity','AbandonedCartData','BrowsingHistory',"ProductName"])
+
+pd.set_option("display.max_columns",None)
+df.sample(2)
+
+# Extract unique ItemIDs for random sampling
+unique_item_ids = df['ItemID'].unique()
+
+# Function to assign a random list of ItemIDs
+def assign_random_items(item_list, n=3):
+    return list(np.random.choice(item_list, size=n, replace=False))
+
+# Create new columns with random ItemIDs
+
+df['CartActivity'] = df['UserID'].apply(lambda _: assign_random_items(unique_item_ids))
+df['WishlistActivity'] = df['UserID'].apply(lambda _: assign_random_items(unique_item_ids))
+df['AbandonedCartData'] = df['UserID'].apply(lambda _: assign_random_items(unique_item_ids))
+df['BrowsingHistory'] = df['UserID'].apply(lambda _: assign_random_items(unique_item_ids))
+
+# Display the first few rows to verify
+df[['UserID', 'CartActivity', 'WishlistActivity', 'AbandonedCartData', 'BrowsingHistory']].head()
+
+# Group by 'UserID' and collect all 'ItemID's for each user as a list
+purchase_history_df = df.groupby('UserID')['ItemID'].apply(list).reset_index()
+
+# Rename the column to 'PurchaseHistory' for clarity
+purchase_history_df.rename(columns={'ItemID': 'PurchaseHistory'}, inplace=True)
+
+# Merge this back to the original DataFrame if you need to retain all original data with the new feature
+df = df.merge(purchase_history_df, on='UserID', how='left')
+
+# Display the final DataFrame with the new 'PurchaseHistory' column
+df.head()
+
+# According to our Literature Review we do not need of Purchase date so we can decidede to drop this feature
+df.drop('PurchaseDate', axis=1, inplace=True)
 
 
-class FeatureEngineering:
-    def __init__(self, config: FeatureEngineeringConfig):
-        self.config = config
+df.isnull().sum()
 
-    def transform_features(self):
-            
-        try:
-            train_data_path = os.path.join(self.config.train_data_path,"Train.npz")
-            test_data_path = os.path.join(self.config.test_data_path,"Test.npz")
-            # Loading the .npz files
-            train_data = np.load(train_data_path)
-            test_data = np.load(test_data_path)
+# we can fill the nan values
+df['Size'] = df['Size'].apply(lambda x: np.random.choice(df['Size'].dropna()) if pd.isna(x) else x)
 
-            X_train, y_train, groups_train = train_data["X_train"], train_data["y_train"], train_data["groups_train"]
-            X_test, y_test = test_data["X_test"], test_data["y_test"]
 
-            info_logger.info(f"Data Split by NestedCrossVal loaded from {train_data_path} and {test_data_path}")
-            info_logger.info(f"{37} Dtype of X_train: {X_train.dtype} and X_test is {X_test.dtype}")
-            info_logger.info(f"{38} Dtype of y_train: {y_train.dtype} and y_test is {y_test.dtype}")
+df.isnull().sum()
 
-            return self.check_transformed_already_exists(X_train,X_test, y_train, y_test, groups_train)
-        except Exception as e:
-            handle_exception(e, FeatureEngineeringError)
-    
+label_encoders = {}
+for col in ['Gender','Location','MembershipLevel','Occupation','DeviceType','Category','Brand','Color','Size']:
+    le = LabelEncoder()
+    df[col] = le.fit_transform(df[col].astype(str))
+    label_encoders[col] = le
 
-    def proceed_with_feature_engineering(self, X_train, X_test, y_train, y_test, groups_train):
-        info_logger.info("Features are now BEING transformed")
-        transform_pipeline = Pipeline([
-                  ("scaler", StandardScaler()),
-                  ("pca",PCA(n_components=None))
-              ])
-        transform_pipeline.fit(X_train)
+date_columns = ['SignUpDate','ReleaseDate']
 
-        # Save the pipeline
-        pipeline_path = os.path.join(self.config.root_dir,"pipeline.joblib")
-        joblib.dump(transform_pipeline, pipeline_path)
-  
+for col in date_columns:
+    df[col + '_Year'] = df[col].dt.year
+    df[col + '_Month'] = df[col].dt.month
+    df[col + '_Day'] = df[col].dt.day
+    df[col + '_DayOfWeek'] = df[col].dt.dayofweek
 
-        X_train = transform_pipeline.transform(X_train)
-        X_test = transform_pipeline.transform(X_test)
+df.drop(columns = date_columns,inplace = True)
 
-        info_logger.info("Features NOW transformed")
-        
-        with open(self.config.STATUS_FILE,"w") as f:
-            f.write(f"Feature engineering completed {True}")
-            
-        return X_train, X_test, y_train, y_test, groups_train
-    
-    def check_transformed_already_exists(self, X_train, X_test, y_train, y_test, groups_train):
-      if os.path.exists(os.path.join(self.config.root_dir,"Train.npz")):
-          if os.path.exists(os.path.join(self.config.root_dir,"Test.npz")):
-              
-              info_logger.info("Features ALREADY transformed")
+df.head(1)
 
-              transformed_data_path = self.config.root_dir
-              train_data = np.load(os.path.join(transformed_data_path, 'Train.npz'))
-              test_data = np.load(os.path.join(transformed_data_path, 'Test.npz'))
+scaler = MinMaxScaler()
+numerical_columns = ['Clicks', 'Views', 'TimeSpentOnItem', 'SessionDuration', 'Age', 'Price', 'Discount', 'Stock', 'Ratings', 'PopularityScore']
 
-              X_train, y_train, groups_train = train_data["X_train"], train_data["y_train"], train_data["groups_train"]
-              X_test, y_test = test_data["X_test"], test_data["y_test"]
-              
-              with open(self.config.STATUS_FILE,"w") as f:
-                f.write(f"Feature engineering completed {True}")
-              return X_train, X_test, y_train, y_test, groups_train
-          else:
-              return self.proceed_with_feature_engineering(X_train, X_test, y_train, y_test, groups_train)
+df[numerical_columns] = scaler.fit_transform(df[numerical_columns])
 
-      else:
-          return self.proceed_with_feature_engineering(X_train, X_test, y_train, y_test, groups_train) 
-    
-      
-    
-    def save_transformed_data(self,X_train, X_test, y_train, y_test, groups_train):
-        try:
-            transformed_data_path = self.config.root_dir
 
-            np.savez(os.path.join(transformed_data_path, 'Train.npz'), X_train=X_train, y_train=y_train, groups_train=groups_train)
-            np.savez(os.path.join(transformed_data_path, 'Test.npz'),  X_test=X_test, y_test=y_test)
+scaler = MinMaxScaler()
+numerical_columns = ['Clicks','Views','TimeSpentOnItem','SessionDuration','Age','Price','Discount','Stock','Ratings','PopularityScore']
 
-            with open(self.config.STATUS_FILE,"w") as f:
-                f.write(f"Feature engineering completed {True}")
-        except Exception as e:
-            handle_exception(e, FeatureEngineeringError)
-         
+df[numerical_columns] = scaler.fit_transform(df[numerical_columns])
+
+df.sample()
+
+df[['CartActivity','WishlistActivity','AbandonedCartData','BrowsingHistory']].head(3)
+
+df.to_csv("new_df")
+
+df.sample(1)
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+# Vectorize Tags
+tfidf_tags = TfidfVectorizer(max_features=100)
+tags_matrix = tfidf_tags.fit_transform(df['Tags']).toarray()
+
+# Add vectorized tags to the Dataframe
+for i in range(tags_matrix.shape[1]):
+    df[f'Tag_{i}'] = tags_matrix[:,i]
+
+# Vectorize Description
+tfidf_description = TfidfVectorizer(max_features=200)
+description_matrix = tfidf_description.fit_transform(df['Description']).toarray()
+
+# Add vectorized description to the Dataframe
+for i in range(description_matrix.shape[1]):
+    df[f'Description_{i}'] = description_matrix[:,i]
+
+# Drop original text columns if not needed
+df.drop(columns=['Tags','Description'],inplace=True)
+
+df.sample()
+
+df.shape
+
+pip install textblob
+
+
+from textblob import TextBlob
+
+# Define a function to get sentiment polarity
+def sentiment_analysis_function(review):
+    analysis = TextBlob(review)
+    return analysis.sentiment.polarity
+
+
+# Apply the sentiment function to each review
+df['Reviews_Sentiment'] = df['Reviews'].apply(lambda x: sentiment_analysis_function(x) if pd.notnull(x) else 0)
+
+# Drop the original Reviews column
+df.drop(columns=['Reviews'], inplace=True)
+
+
+df.sample(1)
+
+df[['Income','Device','TimeOfInteraction']]
+
+# Ordinal encoding for 'Income'
+income_order = {'Low': 1, 'Medium': 2, 'High': 3}
+df['Income'] = df['Income'].map(income_order)
+
+# Perform one-hot encoding on 'Device' and 'TimeOfInteraction'
+df = pd.get_dummies(df, columns=['Device', 'TimeOfInteraction'], prefix=['Device', 'Time'])
+
+
+
+df.sample(1)
+
+df[['Device_Desktop','Device_Mobile','Device_Tablet','Time_Afternoon','Time_Evening','Time_Morning','Time_Night']]
+
+# List of columns you want to convert
+columns_to_convert = ['Device_Desktop', 'Device_Mobile', 'Device_Tablet', 
+                      'Time_Afternoon', 'Time_Evening', 'Time_Morning', 'Time_Night']
+
+# Convert only the selected columns from boolean to numeric (True -> 1, False -> 0)
+df[columns_to_convert] = df[columns_to_convert].astype(int)
+
+
+df[['Device_Desktop','Device_Mobile','Device_Tablet','Time_Afternoon','Time_Evening','Time_Morning','Time_Night']]
+
+df.sample(1)
+
+df.to_excel('Preprocessed_recommendation.xlsx', index=False)
+
