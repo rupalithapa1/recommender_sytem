@@ -1,38 +1,133 @@
+import os
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler
-from datetime import datetime
-from training.exception import FeatureEngineeringError,handle_exception
-from training.custom_logging import info_logger, error_logger
-from training.entity.config_entity import FeatureEngineeringConfig
-from training.configuration_manager.configuration import ConfigurationManager
-import os
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.decomposition import PCA
+from sklearn.impute import SimpleImputer
+from sklearn.compose import ColumnTransformer
+import joblib
 
-def load_data(file_path):
-    """Load data from a given file path."""
-    return pd.read_excel(file_path)
+class FeatureEngineering:
+    def __init__(self, train_data_path, root_dir):
+        """
+        Initialize the FeatureEngineering class.
+        
+        Args:
+            train_data_path (str): Path to the training data file.
+            root_dir (str): Directory where transformed data and pipelines will be saved.
+        """
+        self.train_data_path = train_data_path
+        self.root_dir = root_dir
 
-def drop_columns(df, columns_to_drop):
-    """Drop specified columns from the DataFrame."""
-    return df.drop(columns=columns_to_drop, errors='ignore')
+    def load_and_preprocess_data(self):
+        """
+        Load and preprocess the dataset from a CSV file.
 
-def assign_random_items(item_list, n=3):
-    """Assign a random list of items from a given list."""
-    return list(np.random.choice(item_list, size=n, replace=False))
+        Returns:
+            pd.DataFrame: Preprocessed dataset.
+        """
+        try:
+            # Load the dataset
+            df = pd.read_csv(self.train_data_path)
+            
+            # Drop irrelevant columns
+            if "Item_Identifier" in df.columns:
+                df.drop("Item_Identifier", axis=1, inplace=True)
+            
+            # Handle missing values
+            if df.isnull().sum().sum() > 0:
+                df.fillna(df.mean(), inplace=True)
+            
+            # Add derived features
+            if "Outlet_Establishment_Year" in df.columns:
+                df["Years_Operational"] = 2024 - df["Outlet_Establishment_Year"]
+            
+            return df
+        except Exception as e:
+            raise Exception(f"Error in load_and_preprocess_data: {e}")
 
-def feature_engineering(df):
-    """Apply feature engineering transformations to the DataFrame."""
-    # Extract unique ItemIDs for random sampling
-    unique_item_ids = df['ItemID'].unique()
-    
-    # Add new columns with random ItemIDs
-    df['CartActivity'] = df['UserID'].apply(lambda _: assign_random_items(unique_item_ids))
-    df['WishlistActivity'] = df['UserID'].apply(lambda _: assign_random_items(unique_item_ids))
-    df['AbandonedCartData'] = df['UserID'].apply(lambda _: assign_random_items(unique_item_ids))
-    df['BrowsingHistory'] = df['UserID'].apply(lambda _: assign_random_items(unique_item_ids))
-    
-    return df
+    def transform_features(self):
+        """
+        Transform features using preprocessing pipelines.
 
-def save_data(df, output_file):
-    """Save the DataFrame to a specified file."""
-    df.to_csv(output_file, index=False)
+        Returns:
+            np.ndarray: Transformed feature matrix.
+            np.ndarray or None: Target variable (if present).
+        """
+        try:
+            df = self.load_and_preprocess_data()
+
+            # Define feature types
+            numerical_features = df.select_dtypes(include=["float64", "int64"]).columns.tolist()
+            categorical_features = df.select_dtypes(include=["object"]).columns.tolist()
+
+            # Separate target variable if present
+            if "target" in df.columns:
+                y = df["target"]
+                df.drop(columns=["target"], inplace=True)
+            else:
+                y = None
+
+            X = df
+
+            # Define preprocessing pipelines
+            numerical_transformer = Pipeline(steps=[
+                ('imputer', SimpleImputer(strategy='mean')),
+                ('scaler', StandardScaler())
+            ])
+
+            categorical_transformer = Pipeline(steps=[
+                ('imputer', SimpleImputer(strategy='most_frequent')),
+                ('onehot', OneHotEncoder(handle_unknown='ignore'))
+            ])
+
+            # Combine transformations
+            preprocessor = ColumnTransformer(
+                transformers=[
+                    ('num', numerical_transformer, numerical_features),
+                    ('cat', categorical_transformer, categorical_features)
+                ]
+            )
+
+            # Full pipeline with PCA
+            pipeline = Pipeline(steps=[
+                ('preprocessor', preprocessor),
+                ('pca', PCA(n_components=None))  # Set components if needed
+            ])
+
+            # Fit and transform the data
+            X_transformed = pipeline.fit_transform(X)
+
+            # Save the pipeline
+            pipeline_path = os.path.join(self.root_dir, "pipeline.joblib")
+            joblib.dump(pipeline, pipeline_path)
+
+            return X_transformed, y
+        except Exception as e:
+            raise Exception(f"Error in transform_features: {e}")
+
+    def save_transformed_data(self, X_transformed, y):
+        """
+        Save transformed data to .npz files.
+
+        Args:
+            X_transformed (np.ndarray): Transformed feature matrix.
+            y (np.ndarray or None): Target variable (if present).
+        """
+        try:
+            transformed_data_path = self.root_dir
+            np.savez(os.path.join(transformed_data_path, 'Transformed_Data.npz'), 
+                     X_transformed=X_transformed, y=y)
+        except Exception as e:
+            raise Exception(f"Error in save_transformed_data: {e}")
+
+# Example usage
+if __name__ == "__main__":
+    train_data_path = "path/to/your/train_data.csv"  # Replace with actual path
+    root_dir = "path/to/save/pipeline_and_data"     # Replace with actual path
+
+    feature_engineering = FeatureEngineering(train_data_path, root_dir)
+    X_transformed, y = feature_engineering.transform_features()
+    feature_engineering.save_transformed_data(X_transformed, y)
+
