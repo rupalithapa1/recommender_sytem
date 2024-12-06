@@ -12,12 +12,11 @@ def handle_exception(error, error_type):
     # Log the complete stack trace and details to the log file
     error_logger.error("Exception occurred", exc_info=True)
 
-    error_logger.error("\n\n")  # To leave a few blank lines
+    # Add blank lines to separate error messages in the log
+    error_logger.error("\n\n")  
 
     # Print only the formatted message to the console
     print(f"{error_type.__name__}: {error.__class__.__name__}: {error}")
-
-
 
 # Base custom exception
 class PipelineError(Exception):
@@ -42,9 +41,22 @@ class ModelTrainingError(PipelineError):
 class ModelEvaluationError(PipelineError):
     pass
 
+# Example function to simulate an error for testing
+def my_func(value):
+    """
+    A simple example function that raises an exception.
+    
+    Args:
+        value (int): An integer input.
+    """
+    if value != 42:
+        raise ValueError("Value must be 42!")
 
+# Main script
 if __name__ == "__main__":
     try:
-        my_func(23)
-    except Exception as e:
+        # Call a function that may raise an exception
+        my_func(23)  # This will raise a ValueError
+    except ValueError as e:
+        # Handle the exception and wrap it in a custom pipeline error
         handle_exception(e, DataIngestionError)
