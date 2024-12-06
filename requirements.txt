@@ -1,0 +1,14 @@
+boto3
+pandas
+numpy
+matplotlib
+scikit-learn
+scikit-image
+scipy
+opencv-python
+
+python-box
+ensure
+pyYAML
+Flask
+-e .
